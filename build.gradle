@@ -1,0 +1,78 @@
+plugins {
+  id "fabric-loom" version "0.4-SNAPSHOT"
+  id "maven-publish"
+}
+
+sourceCompatibility = targetCompatibility = JavaVersion.VERSION_1_8
+
+archivesBaseName = project.name
+version = project.version
+group = project.group
+
+sourceSets {
+  testmod
+}
+
+dependencies {
+  minecraft "com.mojang:minecraft:${project.minecraft_version}"
+  mappings "net.fabricmc:yarn:${project.yarn_version}:v2"
+  modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+  implementation "org.graalvm.js:js:${project.graalvm_version}"
+  include "org.graalvm.js:js:${project.graalvm_version}"
+  include "org.graalvm.regex:regex:${project.graalvm_version}"
+  include "org.graalvm.truffle:truffle-api:${project.graalvm_version}"
+  include "org.graalvm.sdk:graal-sdk:${project.graalvm_version}"
+}
+
+processResources {
+  inputs.property "version", project.version
+  filesMatching("fabric.mod.json") {
+    expand "version": project.version
+  }
+}
+
+processTestmodResources {
+  inputs.property "version", project.version
+  filesMatching("fabric.mod.json") {
+    expand "version": project.version
+  }
+}
+
+tasks.withType(JavaCompile) {
+  options.encoding = "UTF-8"
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+  archiveClassifier.set("sources")
+  from sourceSets.main.allSource
+}
+
+jar {
+  from "LICENSE"
+}
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      artifact(jar) {
+        builtBy remapJar
+      }
+      artifact(sourcesJar) {
+        builtBy remapSourcesJar
+      }
+    }
+  }
+  repositories {
+    mavenLocal()
+  }
+}
+
+runClient {
+  maxHeapSize = "2G"
+  classpath project.sourceSets.testmod.output
+}
+
+runServer {
+  maxHeapSize = "2G"
+  classpath project.sourceSets.testmod.output
+}

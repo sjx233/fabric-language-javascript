@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "javascript-test",
+  "version": "${version}",
+  "name": "JavaScript Test",
+  "entrypoints": {
+    "preLaunch": [
+      {
+        "adapter": "javascript",
+        "value": "testmod.mjs"
+      }
+    ]
+  }
+}
