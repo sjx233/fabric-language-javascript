@@ -44,7 +44,7 @@ public class JavaScriptLanguageAdapter implements LanguageAdapter {
     try {
       String code = String.format("import * as mod from '%s'; mod['%s'];", escape(mod.getMetadata().getId() + ':' + value), escape(type.getMethods()[0].getName()));
       func = context.eval(Source.newBuilder(JavaScriptLanguage.ID, code, "entrypoint-" + nextId++ + ".mjs").build());
-    } catch (Exception e) {
+    } catch (IOException | PolyglotException e) {
       throw new LanguageAdapterException(e);
     }
     if (func == null || !func.canExecute()) throw new LanguageAdapterException("Entrypoint is not a function");

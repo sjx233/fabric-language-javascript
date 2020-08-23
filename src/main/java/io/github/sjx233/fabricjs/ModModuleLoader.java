@@ -8,7 +8,6 @@ import static org.apache.commons.io.FilenameUtils.separatorsToUnix;
 
 import java.io.IOException;
 
-import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
@@ -61,8 +60,7 @@ public class ModModuleLoader extends DefaultESModuleLoader {
       String key = result.getFirst().getMetadata().getId() + ':' + result.getSecond();
       JSModuleRecord module = moduleMap.get(key);
       if (module == null) {
-        TruffleFile file = realm.getEnv().getPublicTruffleFile(mod.getPath(path).toUri());
-        Source source = Source.newBuilder(JavaScriptLanguage.ID, file).name(key).build();
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, mod.getPath(path).toUri().toURL()).name(key).build();
         module = realm.getContext().getEvaluator().parseModule(realm.getContext(), source, this);
         moduleMap.put(key, module);
       }
