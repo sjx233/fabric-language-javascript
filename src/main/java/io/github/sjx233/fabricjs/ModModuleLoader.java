@@ -32,18 +32,20 @@ public class ModModuleLoader extends DefaultESModuleLoader {
     return path.substring(prefix);
   }
 
+  private static ModContainer getModContainer(String id) {
+    return FabricLoader.getInstance().getModContainer(id).orElseThrow(() -> Errors.createError("Mod '" + id + "' not found"));
+  }
+
   private Pair<ModContainer, String> parseSpecifier(String referrer, String specifier) {
-    if (specifier == null) throw Errors.createError("Unable to determine import target");
     int index = specifier.indexOf(":");
     ModContainer mod;
     String path;
     if (index == -1) {
-      Pair<ModContainer, String> result = parseSpecifier(null, referrer);
-      mod = result.getFirst();
-      path = concat(getPath(result.getSecond()), specifier);
+      if (referrer == null || (index = referrer.indexOf(":")) == -1) throw Errors.createError("Unable to determine import target");
+      mod = getModContainer(referrer.substring(0, index));
+      path = concat(getPath(referrer.substring(index + 1)), specifier);
     } else {
-      String modId = specifier.substring(0, index);
-      mod = FabricLoader.getInstance().getModContainer(modId).orElseThrow(() -> Errors.createError("Mod '" + modId + "' not found"));
+      mod = getModContainer(specifier.substring(0, index));
       path = normalize(dropPrefix(specifier.substring(index + 1)));
     }
     path = separatorsToUnix(path);
@@ -53,11 +55,11 @@ public class ModModuleLoader extends DefaultESModuleLoader {
 
   @Override
   public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, String specifier) {
-    Pair<ModContainer, String> result = parseSpecifier(referrer.getSource().getName(), specifier);
+    Pair<ModContainer, String> result = parseSpecifier(referrer == null ? null : referrer.getSource().getName(), specifier);
     ModContainer mod = result.getFirst();
     String path = result.getSecond();
     try {
-      String key = result.getFirst().getMetadata().getId() + ':' + result.getSecond();
+      String key = mod.getMetadata().getId() + ':' + path;
       JSModuleRecord module = moduleMap.get(key);
       if (module == null) {
         Source source = Source.newBuilder(JavaScriptLanguage.ID, mod.getPath(path).toUri().toURL()).name(key).build();

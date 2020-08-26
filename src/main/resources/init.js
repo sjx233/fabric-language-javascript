@@ -1,5 +1,6 @@
 "use strict";
 
+const { nanoTime } = Java.type("java.lang.System");
 const Level = Java.type("org.apache.logging.log4j.Level");
 const Logger = Java.type("org.apache.logging.log4j.Logger");
 const LogManager = Java.type("org.apache.logging.log4j.LogManager");
@@ -126,31 +127,31 @@ Reflect.defineProperty(globalThis, "console", {
           print("reportWarning", [`Timer '${label}' already exists`]);
           return;
         }
-        timerTable.set(label, performance.now());
+        timerTable.set(label, nanoTime());
       },
       timeLog(label = "default", ...data) {
-        const curTime = performance.now();
+        const curTime = nanoTime();
         const startTime = timerTable.get(label);
         if (startTime === undefined) {
           print("reportWarning", [`Timer '${label}' does not exist`]);
           return;
         }
-        const duration = (curTime - startTime).toFixed(6) + "ms";
+        const duration = ((curTime - startTime) * 0.000001).toFixed(6) + "ms";
         data.unshift(`${label}: ${duration}`);
         print("timeLog", data);
       },
       timeEnd(label = "default") {
-        const curTime = performance.now();
+        const curTime = nanoTime();
         const startTime = timerTable.get(label);
         if (startTime === undefined) {
           print("reportWarning", [`Timer '${label}' does not exist`]);
           return;
         }
         timerTable.delete(label);
-        const duration = (curTime - startTime).toFixed(6) + "ms";
+        const duration = ((curTime - startTime) * 0.000001).toFixed(6) + "ms";
         print("timeEnd", [`${label}: ${duration}`]);
       }
     });
   })()
 });
-console.log("Initialized globals");
+console.log("Initialized JavaScript runtime");
