@@ -10,12 +10,14 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Evaluator;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 
 import org.graalvm.polyglot.Context;
@@ -62,7 +64,7 @@ public class JavaScriptLanguageAdapter implements LanguageAdapter {
       try {
         Object func = getExport(module, method.getName());
         if (!(func instanceof DynamicObject && IsCallableNode.create().executeBoolean(func))) throw new NoSuchMethodError(module.getSource().getName() + '/' + method.getName());
-        return JSFunction.getFunctionData((DynamicObject) func).getCallTarget().call();
+        return JSFunction.getFunctionData((DynamicObject) func).getCallTarget().call(JSArguments.createZeroArg(Null.instance, func));
       } finally {
         context.leave();
       }
