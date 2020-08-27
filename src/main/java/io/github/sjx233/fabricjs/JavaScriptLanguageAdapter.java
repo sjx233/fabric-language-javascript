@@ -4,7 +4,6 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Proxy;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
@@ -29,7 +28,6 @@ import net.fabricmc.loader.launch.common.FabricLauncherBase;
 
 public class JavaScriptLanguageAdapter implements LanguageAdapter {
   private static final MethodHandle MH_JSRealm_setModuleLoader;
-  private static final IsCallableNode isCallable = IsCallableNode.create();
   private final Context context;
   private final JSRealm realm;
 
@@ -58,16 +56,13 @@ public class JavaScriptLanguageAdapter implements LanguageAdapter {
 
   @Override
   public <T> T create(ModContainer mod, String value, Class<T> type) throws LanguageAdapterException {
-    String specifier = mod.getMetadata().getId() + ':' + value;
-    String name = type.getMethods()[0].getName();
-    JSModuleRecord module = evaluateModule(null, specifier);
-    Object func = getExport(module, name);
-    if (!(func instanceof DynamicObject && isCallable.executeBoolean(func))) throw new LanguageAdapterException("Entrypoint is not a function");
-    CallTarget target = JSFunction.getFunctionData((DynamicObject) func).getCallTarget();
+    JSModuleRecord module = evaluateModule(null, mod.getMetadata().getId() + ':' + value);
     return type.cast(Proxy.newProxyInstance(FabricLauncherBase.getLauncher().getTargetClassLoader(), new Class[] { type }, (proxy, method, args) -> {
       context.enter();
       try {
-        return target.call();
+        Object func = getExport(module, method.getName());
+        if (!(func instanceof DynamicObject && IsCallableNode.create().executeBoolean(func))) throw new NoSuchMethodError(module.getSource().getName() + '/' + method.getName());
+        return JSFunction.getFunctionData((DynamicObject) func).getCallTarget().call();
       } finally {
         context.leave();
       }
@@ -75,9 +70,9 @@ public class JavaScriptLanguageAdapter implements LanguageAdapter {
   }
 
   private JSModuleRecord evaluateModule(ScriptOrModule referrer, String specifier) {
-    Evaluator evaluator = realm.getContext().getEvaluator();
     context.enter();
     try {
+      Evaluator evaluator = realm.getContext().getEvaluator();
       JSModuleRecord module = evaluator.hostResolveImportedModule(realm.getContext(), referrer, specifier);
       evaluator.moduleInstantiation(realm, module);
       evaluator.moduleEvaluation(realm, module);
@@ -91,9 +86,8 @@ public class JavaScriptLanguageAdapter implements LanguageAdapter {
   private Object getExport(JSModuleRecord module, String name) {
     ExportResolution resolution = realm.getContext().getEvaluator().resolveExport(module, name);
     if (resolution.isNull() || resolution.isAmbiguous()) return null;
-    String bindingName = resolution.getBindingName();
-    FrameSlot frameSlot = module.getFrameDescriptor().findFrameSlot(bindingName);
-    return module.getEnvironment().getValue(frameSlot);
+    FrameSlot slot = module.getFrameDescriptor().findFrameSlot(resolution.getBindingName());
+    return module.getEnvironment().getValue(slot);
   }
 
   static {
@@ -102,7 +96,7 @@ public class JavaScriptLanguageAdapter implements LanguageAdapter {
         .privateLookupIn(JSRealm.class, MethodHandles.lookup())
         .findSetter(JSRealm.class, "moduleLoader", JSModuleLoader.class);
     } catch (IllegalAccessException | NoSuchFieldException e) {
-      throw new RuntimeException(e);
+      throw new Error(e);
     }
   }
 }
